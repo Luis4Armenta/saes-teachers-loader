@@ -17,7 +17,7 @@ class MongoPipeline:
   def __init__(self):
     self.mongo_uri = 'localhost'
     self.mongo_port = 27017
-    self.mongo_db = 'teachers_dictionary'
+    self.mongo_db = 'teachers_dictionari'
     self.collection_name_of_teachers = 'teachers'
     self.collection_name_of_subjects = 'subjects'
     

@@ -1,13 +1,17 @@
 import re
 from scrapy import Spider
+from statistics import mean
 from typing import List, TypedDict
 from teacher_loader.items import Teacher
+from teacher_loader.services.PolarityEvaluator import TextBlobEvaluator, PolarityEvaluator
+from teacher_loader.services.Translator import GoogleTranslator, Translator
 
 class Comment(TypedDict):
   text: str
   date: str
   likes: int
   dislikes: int
+  polarity: float
 
 class TeachersSpiderSpider(Spider):
   name = "teachers_spider"
@@ -22,10 +26,16 @@ class TeachersSpiderSpider(Spider):
     'FEED_EXPORT_ENCODING': 'utf-8'
   }
   
-
+  def __init__(self, *a, **kw):
+    super(TeachersSpiderSpider, self).__init__(*a, **kw)
+    
+    translator: Translator = GoogleTranslator()
+    self.polarity_evaluator: PolarityEvaluator = TextBlobEvaluator(translator)
+    
   def parse_teacher(self, response):
     name: str = response.xpath('//p[@class="encontrados"]/span[@class="txbuscado"]/text()').get()
-    
+    polarities: List[float] = []
+       
     if name:
       subjs: List[str] = response.xpath('//div[@class="row text-center top25 comentariosbox"]//h5/text()').getall()
       subjs = [subj.strip() for subj in subjs]
@@ -40,12 +50,16 @@ class TeachersSpiderSpider(Spider):
         likes: int = int(raw_comment.xpath('.//div[@class="col-md-3 text-right"]/button[@class="btn btn-default btn-comentario btn-ok tipo_enlace"]/span/text()').get().strip())
         dislikes: int = int(raw_comment.xpath('.//div[@class="col-md-3 text-right"]/button[@class="btn btn-default btn-comentario btn-nop"]/span/text()').get().strip())
         date: str = raw_comment.xpath('.//div[@class="date-comment col-md-6 text-left"]/i/text()').get().strip()
-
+        polarity: float = self.polarity_evaluator.get_polarity(text)
+        
+        polarities.append((polarity+1)/2)
+        
         comment: Comment = {
           'text': text,
           'date': date,
           'likes': likes,
-          'dislikes': dislikes
+          'dislikes': dislikes,
+          'polarity': polarity
         }
 
         comments.append(comment)
@@ -56,6 +70,7 @@ class TeachersSpiderSpider(Spider):
       teacher['url'] = response.url
       teacher['subjects'] = subjects
       teacher['comments'] = comments
+      teacher['polarity'] = mean(polarities)
       
       yield teacher
     

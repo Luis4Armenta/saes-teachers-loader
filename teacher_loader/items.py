@@ -16,3 +16,4 @@ class Teacher(Item):
   url: str = Field()
   subjects: List[str] = Field()
   comments: List = Field()
+  polarity: float = Field()
